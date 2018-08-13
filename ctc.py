@@ -1,14 +1,13 @@
-def CTCDecoder(class):
+import numpy as np
+import math
 
-    def __init__(alphabel):
-        self.alphabet = {' ': 0, 'a' : 1, 'b' : 2, 'c' : 3, 'd':  4,
-                     'e': 5, 'f': 6, 'g': 7, 'h':8, 'i':9, 'j': 10, 'k': 11,
-                     'l': 12, 'm' : 13, 'n' : 14, 'o':15, 'p':16, 'q':17, 'r':18, 's':19, 't':20,
-                     'u' : 21, 'v' : 22, 'w' : 23, 'x' : 24, 'y' : 25, 'z' : 26, ',': 27, "'" : 28,
-                     '': 29}
+class CTCDecoder():
+
+    def __init__(self, alphabet):
+        self.alphabet = alphabet
 
     def eval_forward_prob(self, output_timeseries, label):
-        """ Finds the CTC score for the string label given the output distributions
+        """ Inefficiently finds the CTC score for the string label given the RNN output distributions
             for all timesteps.
 
             output_timeseries       - T x D numpy array, where T
@@ -24,32 +23,30 @@ def CTCDecoder(class):
         # Initial probabilities
         # notation from the paper: alpha_t(s) = alpha[t, s]
         alpha_matrix = np.zeros(shape = (T, L))
-        alpha_matrix[0, 0] = output_timeseries[0][aug_label[0]]
-        alpha_matrix[0, 1] = output_timeseries[0][aug_label[1]]
+        alpha_matrix[0, 0] = output_timeseries[0, aug_label[0]]
+        alpha_matrix[0, 1] = output_timeseries[0, aug_label[1]]
         # ....
         # for all s > 1, alpha_matrix[0, s] = 0
         for t, char_dist in enumerate(output_timeseries[1:], 1):
-
             s = 0
-            # finding the probability of prefix aug_label[0:s] at timestep t
-            while (s =< t and s < L):
-                # probability that current character was already reached in previous state
-                reached = alpha_matrix[t - 1][aug_label[s]]
+            while (s < L):
+                # probability that current character was already reached in previous timesteps
+                reached = alpha_matrix[t - 1, s]
                 # probability of transitioning from previous character (blank or same character) to the current
-                prev_blank_same = alpha_matrix[t - 1][aug_label[s - 1]] if s >= 1 else 0
+                prev_blank_same = alpha_matrix[t - 1, s - 1] if s >= 1 else 0
                 alpha_hat = reached + prev_blank_same
                 # adding probability of transitioning from previous distinct non-blank character to current one
-                prev_distinct = alpha_matrix[t - 1][aug_label[s - 2]] if s >= 2 else 0
+                prev_distinct = alpha_matrix[t - 1, s - 2] if s >= 2 else 0
                 #  (repeated characters => need blank) or (current character is blank)
                 if (aug_label[s - 2] == aug_label[s] or aug_label[s] == self.alphabet['']):
-                    alpha_matrix[t][s] = output_timeseries[t][aug_label[s]] * alpha_hat
+                    alpha_matrix[t, s] = output_timeseries[t, aug_label[s]] * alpha_hat
                 # previous character is a blank between two unique characters
                 else:
-                    alpha_matrix[t][s] = output_timeseries[t][aug_label[s]] * (alpha_hat + prev_distinct)
+                    alpha_matrix[t, s] = output_timeseries[t, aug_label[s]] * (alpha_hat + prev_distinct)
                 s += 1
             # normalize the alphas for current timestep so that we don't underflow
-            alpha_matrix = rescale_alpha(alpha_matrix, t, s + 1)
-        return alpha_matrix[T - 1][L - 1] + alpha_matrix[T - 1][L - 2]
+            #alpha_matrix = rescale_alpha(alpha_matrix, t, s + 1)
+        return alpha_matrix[T - 1, L - 1] + alpha_matrix[T - 1, L - 2]
 
 
     def preprocess_label(self, label):
@@ -58,10 +55,11 @@ def CTCDecoder(class):
 
             label                   - a string
         """
-        aug_label = [].append(self.alphabel[''])
+        aug_label = []
+        aug_label.append(self.alphabet[''])
         for char in label:
-            aug_label.append(self.alphabel[char])
-            aug_label.append(self.alphabel[''])
+            aug_label.append(self.alphabet[char])
+            aug_label.append(self.alphabet[''])
         return aug_label
 
     #def predict_best_path(self, output_timeseries):
@@ -78,10 +76,24 @@ def rescale_alpha(alpha_matrix, t, s):
     return alpha_matrix
 
 
-def test_eval_forward_prob():
-    dec = CTCDecoder()
-    label = "cat"
-    output_timeseries_1 = np.array()
-    output_timeseries_2 = np.array()
-    assert 0 == dec.eval_forward_prob(output_timeseries_1, "cat")
-    assert 0 == dec.eval_forward_prob(output_timeseries_2, "cat")
+def test():
+    # Note: run tests without rescale_alpha
+    alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
+    alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
+
+    dec1 = CTCDecoder(alphabet1)
+    dec2 = CTCDecoder(alphabet2)
+
+    # Not valid distributions, but easy to compute
+    output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                                    [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
+    # A bit more realistic
+    output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2],
+                                    [0.6, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.3, 0.1], [0.1, 0.1, 0.1, 0.3, 0.1],
+                                    [0.1, 0.1, 0.1, 0.3, 0.1])
+    print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9)
+    print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9)
+    print np.isclose(dec.eval_forward_prob(output_timeseries_2, "hello"), 0.0007, 1e-9)
+
+
+    #assert 0 == dec.eval_forward_prob(output_timeseries_2, "cat")
