@@ -75,6 +75,8 @@ def rescale_alpha(alpha_matrix, t, s):
     alpha_matrix[t][:s] /= alphas_sum
     return alpha_matrix
 
+# TODO
+#def seq_to_log_scale(output_timeseries):
 
 def test():
     # Note: run tests without rescale_alpha
@@ -89,11 +91,9 @@ def test():
                                     [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
     # A bit more realistic
     output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2],
-                                    [0.6, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.3, 0.1], [0.1, 0.1, 0.1, 0.3, 0.1],
-                                    [0.1, 0.1, 0.1, 0.3, 0.1])
+                                    [0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
+                                    [0.1, 0.1, 0.1, 0.3, 0.1]])
+
     print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9)
     print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9)
-    print np.isclose(dec.eval_forward_prob(output_timeseries_2, "hello"), 0.0007, 1e-9)
-
-
-    #assert 0 == dec.eval_forward_prob(output_timeseries_2, "cat")
+    print np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9)
