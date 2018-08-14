@@ -5,6 +5,9 @@ class CTCDecoder():
 
     def __init__(self, alphabet):
         self.alphabet = alphabet
+        self.alphabet_reverse = {}
+        for key, value in self.alphabet.items():
+            self.alphabet_reverse[value] = key
 
     def eval_forward_prob(self, output_timeseries, label):
         """ Finds the CTC score for the string label given the RNN output distributions
@@ -51,7 +54,12 @@ class CTCDecoder():
             # normalize the alphas for current timestep so that we don't underflow
         return np.exp(alpha_matrix[T - 1, L - 1]) + np.exp(alpha_matrix[T - 1, L - 2])
 
+    def best_path_decoding(self, output_timeseries):
+        best_path_indices = np.argmax(output_timeseries, axis = 1)
+        best_path = [self.alphabet_reverse[i] for i in best_path_indices]
+        return alignment_postprocess(best_path)
 
+#    def beam_search_decoding():
 
     def preprocess_label(self, label):
         """ Converts the labels to a sequence of character codes with
@@ -66,7 +74,6 @@ class CTCDecoder():
             aug_label.append(self.alphabet[''])
         return aug_label
 
-    #def predict_best_path(self, output_timeseries):
 def log_of_sum(a, b):
     """
         ln(a + b) = ln(a) + ln(1 + exp(ln(b) - ln(a))), unless one of them is zero
@@ -89,7 +96,7 @@ def prod_of_logs(a, b):
     else:
         return 0
 
-def calc_alignment(alignment):
+def alignment_postprocess(alignment):
     """
         Removes repeated adjacent characters
     """
@@ -98,7 +105,7 @@ def calc_alignment(alignment):
     for i in range(len(alignment), 1):
         if (alignment[i] != alignment[i - 1]):
             label.append(alignment[i])
-    return label
+    return "".join(label)
 
 
 def test_eval_forward():
