@@ -1,6 +1,6 @@
 # CTC-Python
 
-A naive implementation of CTC in python. Looks like C, and should be in C, but come on.
+A naive implementation of CTC in Python. Looks like C, and should be in C, but come on.
 
 Check out the cool stuff:
 

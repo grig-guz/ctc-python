@@ -7,7 +7,7 @@ class CTCDecoder():
         self.alphabet = alphabet
 
     def eval_forward_prob(self, output_timeseries, label):
-        """ Inefficiently finds the CTC score for the string label given the RNN output distributions
+        """ Finds the CTC score for the string label given the RNN output distributions
             for all timesteps.
 
             output_timeseries       - T x D numpy array, where T
@@ -88,6 +88,17 @@ def prod_of_logs(a, b):
         return a + b
     else:
         return 0
+
+def calc_alignment(alignment):
+    """
+        Removes repeated adjacent characters
+    """
+    label = []
+    label.append(alignment[0])
+    for i in range(len(alignment), 1):
+        if (alignment[i] != alignment[i - 1]):
+            label.append(alignment[i])
+    return label
 
 
 def test_eval_forward():
