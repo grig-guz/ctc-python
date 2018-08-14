@@ -45,7 +45,6 @@ class CTCDecoder():
                     alpha_matrix[t, s] = output_timeseries[t, aug_label[s]] * (alpha_hat + prev_distinct)
                 s += 1
             # normalize the alphas for current timestep so that we don't underflow
-            #alpha_matrix = rescale_alpha(alpha_matrix, t, s + 1)
         return alpha_matrix[T - 1, L - 1] + alpha_matrix[T - 1, L - 2]
 
 
@@ -63,17 +62,6 @@ class CTCDecoder():
         return aug_label
 
     #def predict_best_path(self, output_timeseries):
-
-def rescale_alpha(alpha_matrix, t, s):
-    """ Normalize probabilities for all (possible) prefixes of aug_label at timestep t
-
-        alpha_matrix                -
-        t                           -
-        s                           -
-    """
-    alphas_sum = np.sum(alpha_matrix[t][:s])
-    alpha_matrix[t][:s] /= alphas_sum
-    return alpha_matrix
 
 # TODO
 #def seq_to_log_scale(output_timeseries):
