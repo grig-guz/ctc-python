@@ -20,6 +20,9 @@ class CTCDecoder():
         aug_label = self.preprocess_label(label)
         L = len(aug_label)
 
+        # Converting to logprobs, so that we don't underflow
+        output_timeseries = np.log(output_timeseries)
+
         # Initial probabilities
         # notation from the paper: alpha_t(s) = alpha[t, s]
         alpha_matrix = np.zeros(shape = (T, L))
@@ -34,18 +37,20 @@ class CTCDecoder():
                 reached = alpha_matrix[t - 1, s]
                 # probability of transitioning from previous character (blank or same character) to the current
                 prev_blank_same = alpha_matrix[t - 1, s - 1] if s >= 1 else 0
-                alpha_hat = reached + prev_blank_same
+
+                alpha_hat = log_of_sum(reached, prev_blank_same)
                 # adding probability of transitioning from previous distinct non-blank character to current one
                 prev_distinct = alpha_matrix[t - 1, s - 2] if s >= 2 else 0
                 #  (repeated characters => need blank) or (current character is blank)
                 if (aug_label[s - 2] == aug_label[s] or aug_label[s] == self.alphabet['']):
-                    alpha_matrix[t, s] = output_timeseries[t, aug_label[s]] * alpha_hat
+                    alpha_matrix[t, s] = prod_of_logs(output_timeseries[t, aug_label[s]], alpha_hat)
                 # previous character is a blank between two unique characters
                 else:
-                    alpha_matrix[t, s] = output_timeseries[t, aug_label[s]] * (alpha_hat + prev_distinct)
+                    alpha_matrix[t, s] = prod_of_logs(output_timeseries[t, aug_label[s]], log_of_sum(alpha_hat, prev_distinct))
                 s += 1
             # normalize the alphas for current timestep so that we don't underflow
-        return alpha_matrix[T - 1, L - 1] + alpha_matrix[T - 1, L - 2]
+        return np.exp(alpha_matrix[T - 1, L - 1]) + np.exp(alpha_matrix[T - 1, L - 2])
+
 
 
     def preprocess_label(self, label):
@@ -62,9 +67,22 @@ class CTCDecoder():
         return aug_label
 
     #def predict_best_path(self, output_timeseries):
+def log_of_sum(a, b):
+    if (a != 0 and b != 0):
+        return a + np.log(1 + np.exp(b - a))
+    elif (a != 0):
+        return a
+    elif (b != 0):
+        return b
+    else:
+        return 0
 
-# TODO
-#def seq_to_log_scale(output_timeseries):
+def prod_of_logs(a, b):
+    if (a != 0 and b != 0):
+        return a + b
+    else:
+        return 0
+
 
 def test():
     # Note: run tests without rescale_alpha
