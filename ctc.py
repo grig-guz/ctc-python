@@ -68,6 +68,9 @@ class CTCDecoder():
 
     #def predict_best_path(self, output_timeseries):
 def log_of_sum(a, b):
+    """
+        ln(a + b) = ln(a) + ln(1 + exp(ln(b) - ln(a))), unless one of them is zero
+    """
     if (a != 0 and b != 0):
         return a + np.log(1 + np.exp(b - a))
     elif (a != 0):
@@ -78,13 +81,16 @@ def log_of_sum(a, b):
         return 0
 
 def prod_of_logs(a, b):
+    """
+        ln(ab) = ln(a) + ln(b), unless one of them is zero
+    """
     if (a != 0 and b != 0):
         return a + b
     else:
         return 0
 
 
-def test():
+def test_eval_forward():
     # Note: run tests without rescale_alpha
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
