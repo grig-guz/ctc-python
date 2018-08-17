@@ -194,9 +194,9 @@ def test_eval_forward():
                                     [0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
 
-    print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9)
-    print np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9)
-    print np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9)
+    print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9))
+    print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9))
+    print(np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9))
 
 
 def test():
@@ -213,4 +213,4 @@ def test():
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
     res_tuple = dec2.beam_search_decoding(output_timeseries_2, 200)
-    print np.isclose(dec2.eval_forward_prob(output_timeseries_2, res_tuple[0]), res_tuple[1], 1e-9)
+    print(np.isclose(dec2.eval_forward_prob(output_timeseries_2, res_tuple[0]), res_tuple[1], 1e-9))
