@@ -199,7 +199,7 @@ def test_eval_forward():
     print np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9)
 
 
-def test():
+def test_beam_decoding():
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
 
