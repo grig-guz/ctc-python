@@ -75,6 +75,7 @@ class CTCDecoder():
             beam_size               - number of outputs to keep track of when expanding output_timeseries
         """
         # Initialization
+        output_timeseries = np.log(output_timeseries)
         first_timestep = output_timeseries[0]
         if (beam_size > len(self.alphabet)):
             # All paths can fit in the set of tracked beams
@@ -94,44 +95,41 @@ class CTCDecoder():
             # their probabilities
             for beam in curr_beams:
                 output = beam[0]
-                # Probabilities of expanding one of the beams over next timestepbeam_size
-                expansion_probs = char_dist * (beam[1][0] + beam[1][1])
 
                 for new_char, j in self.alphabet.items():
+                    expansion_prob = prod_of_logs(char_dist[j], log_of_sum(beam[1][0], beam[1][1]))
                     next_path = output + new_char
                     # Ok, now it can be a repeat or blank or distinct, 3 cases
                     # If blank,
                     if new_char == '':
                         if outputs_dict.get(output) is None:
-                            outputs_dict[output] = (0, expansion_probs[j])
+                            outputs_dict[output] = (0, expansion_prob)
                         else:
-                            outputs_dict[output] = (outputs_dict[output][0], outputs_dict[output][1] + expansion_probs[j])
+                            outputs_dict[output] = (outputs_dict[output][0], log_of_sum(outputs_dict[output][1], expansion_prob))
                     # If repeat, we should keep two versions:
                     # 1. the character added to the path is collapsed
                     # 2. the character added to the path is not collapsed (so we have repeated characters in output, like 'll' in hello)
                     elif len(output) > 0 and new_char == output[-1]:
                         if outputs_dict.get(output) is None:
-                            outputs_dict[output] = (char_dist[j] * beam[1][0], 0)
+                            outputs_dict[output] = (prod_of_logs(char_dist[j], beam[1][0]), 0)
                         else:
-                            outputs_dict[output] = (char_dist[j] * beam[1][0] + outputs_dict[output][0], outputs_dict[output][1])
+                            outputs_dict[output] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][0]), outputs_dict[output][0]), outputs_dict[output][1])
                         if outputs_dict.get(next_path) is None:
-                            outputs_dict[next_path] = (char_dist[j] * beam[1][1], 0)
+                            outputs_dict[next_path] = (prod_of_logs(char_dist[j], beam[1][1]), 0)
                         else:
-                            outputs_dict[next_path] = (char_dist[j] * beam[1][1] + outputs_dict[next_path][0], outputs_dict[next_path][1])
+                            outputs_dict[next_path] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][1]), outputs_dict[next_path][0]), outputs_dict[next_path][1])
                     # If distinct, we just add this character
                     else:
                         if outputs_dict.get(next_path) is None:
-                            outputs_dict[next_path] = (expansion_probs[j], 0)
+                            outputs_dict[next_path] = (expansion_prob, 0)
                         else:
-                            outputs_dict[next_path] = (expansion_probs[j] + outputs_dict[next_path][0], outputs_dict[next_path][1])
-            #print(outputs_dict)
-            curr_beams = sorted(outputs_dict.items(), key = lambda t: t[1][0] + t[1][1], reverse = True)[:beam_size]
+                            outputs_dict[next_path] = (log_of_sum(expansion_prob, outputs_dict[next_path][0]), outputs_dict[next_path][1])
+            curr_beams = sorted(outputs_dict.items(), key = lambda t: sum_for_max(t[1][0], t[1][1]), reverse = True)[:beam_size]
             #print "\n"
             #print(curr_beams)
             #print "\n\n\n"
 
-        print((curr_beams[0][0], curr_beams[0][1][0] + curr_beams[0][1][1]))
-        return (curr_beams[0][0], curr_beams[0][1][0] + curr_beams[0][1][1])
+        return (curr_beams[0][0], np.exp(curr_beams[0][1][0]) + np.exp(curr_beams[0][1][1]))
 
     def preprocess_label(self, label):
         """ Converts the labels to a sequence of character codes with
@@ -158,6 +156,12 @@ def log_of_sum(a, b):
         return b
     else:
         return 0
+
+def sum_for_max(a, b):
+    if (a == 0 and b == 0):
+        return float("-inf")
+    else:
+        return log_of_sum(a, b)
 
 def prod_of_logs(a, b):
     """
@@ -201,7 +205,7 @@ def test_eval_forward():
     print np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9)
 
 
-def test(i):
+def test():
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
 
@@ -214,6 +218,6 @@ def test(i):
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
-    #dec1.beam_search_decoding(output_timeseries_1, 3)
-    res_tuple = dec2.beam_search_decoding(output_timeseries_2, i)
+    #print dec1.beam_search_decoding(output_timeseries_1, 3)
+    res_tuple = dec2.beam_search_decoding(output_timeseries_2, 200)
     print np.isclose(dec2.eval_forward_prob(output_timeseries_2, res_tuple[0]), res_tuple[1], 1e-9)
