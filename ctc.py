@@ -85,9 +85,6 @@ class CTCDecoder():
             # Expand over beam_size most probable first characters, keeping the probability of
             # this character
             curr_beams = [(self.alphabet_reverse[i], (first_timestep[i], 0)) for i in best_alignments_ind]
-        #print('initialize')
-        #print(curr_beams)
-        #print('steps:')
         # Step
         for i, char_dist in enumerate(output_timeseries[1:], 1):
             outputs_dict = {}
@@ -125,9 +122,6 @@ class CTCDecoder():
                         else:
                             outputs_dict[next_path] = (log_of_sum(expansion_prob, outputs_dict[next_path][0]), outputs_dict[next_path][1])
             curr_beams = sorted(outputs_dict.items(), key = lambda t: sum_for_max(t[1][0], t[1][1]), reverse = True)[:beam_size]
-            #print "\n"
-            #print(curr_beams)
-            #print "\n\n\n"
 
         return (curr_beams[0][0], np.exp(curr_beams[0][1][0]) + np.exp(curr_beams[0][1][1]))
 
@@ -218,6 +212,5 @@ def test():
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
-    #print dec1.beam_search_decoding(output_timeseries_1, 3)
     res_tuple = dec2.beam_search_decoding(output_timeseries_2, 200)
     print np.isclose(dec2.eval_forward_prob(output_timeseries_2, res_tuple[0]), res_tuple[1], 1e-9)
