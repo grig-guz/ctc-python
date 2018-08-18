@@ -4,6 +4,13 @@ import math
 class CTCDecoder():
 
     def __init__(self, alphabet):
+        """
+            Encoding each character used during decoding as an integer value
+            in both ways (char->int and int->char)
+
+            alphabet        - a dictionary with characters as keys and their
+                              ids as values (one to one correspondence)
+        """
         self.alphabet = alphabet
         self.alphabet_reverse = {}
         for key, value in self.alphabet.items():
@@ -18,14 +25,11 @@ class CTCDecoder():
                                       and D is the size of the alphabet with the blank character
             label                   - a string
         """
-
         T = output_timeseries.shape[0]
         aug_label = self.preprocess_label(label)
         L = len(aug_label)
-
         # Converting to logprobs, so that we don't underflow
         output_timeseries = np.log(output_timeseries)
-
         # Initial probabilities
         # notation from the paper: alpha_t(s) = alpha[t, s]
         alpha_matrix = np.zeros(shape = (T, L))
@@ -40,7 +44,6 @@ class CTCDecoder():
                 reached = alpha_matrix[t - 1, s]
                 # probability of transitioning from previous character (blank or same character) to the current
                 prev_blank_same = alpha_matrix[t - 1, s - 1] if s >= 1 else 0
-
                 alpha_hat = log_of_sum(reached, prev_blank_same)
                 # adding probability of transitioning from previous distinct non-blank character to current one
                 prev_distinct = alpha_matrix[t - 1, s - 2] if s >= 2 else 0
@@ -92,7 +95,6 @@ class CTCDecoder():
             # their probabilities
             for beam in curr_beams:
                 output = beam[0]
-
                 for new_char, j in self.alphabet.items():
                     expansion_prob = prod_of_logs(char_dist[j], log_of_sum(beam[1][0], beam[1][1]))
                     next_path = output + new_char
@@ -122,7 +124,7 @@ class CTCDecoder():
                         else:
                             outputs_dict[next_path] = (log_of_sum(expansion_prob, outputs_dict[next_path][0]), outputs_dict[next_path][1])
             curr_beams = sorted(outputs_dict.items(), key = lambda t: sum_for_max(t[1][0], t[1][1]), reverse = True)[:beam_size]
-
+            #endloop
         return (curr_beams[0][0], np.exp(curr_beams[0][1][0]) + np.exp(curr_beams[0][1][1]))
 
     def preprocess_label(self, label):
@@ -182,10 +184,8 @@ def alignment_postprocess(alignment):
 def test_eval_forward():
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
-
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
-
     # Not valid distributions, but easy to compute
     output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
                                     [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
@@ -193,16 +193,13 @@ def test_eval_forward():
     output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2],
                                     [0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
-
     print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9))
     print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9))
     print(np.isclose(dec2.eval_forward_prob(output_timeseries_2, "hello"), 0.0001344, 1e-9))
 
-
 def test_beam_decoding():
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
-
     # Not valid distributions, but easy to compute
     output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
                                     [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
