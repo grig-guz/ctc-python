@@ -40,19 +40,23 @@ class CTCDecoder():
         for t, char_dist in enumerate(output_timeseries[1:], 1):
             s = 0
             while (s < L):
-                # probability that current character was already reached in previous timesteps
+                # probability that current character was already reached in previous
+                # timesteps
                 reached = alpha_matrix[t - 1, s]
-                # probability of transitioning from previous character (blank or same character) to the current
+                # probability of transitioning from previous character (blank or same character)
+                # to the current
                 prev_blank_same = alpha_matrix[t - 1, s - 1] if s >= 1 else 0
                 alpha_hat = log_of_sum(reached, prev_blank_same)
-                # adding probability of transitioning from previous distinct non-blank character to current one
+                # adding probability of transitioning from previous distinct non-blank
+                # character to current one
                 prev_distinct = alpha_matrix[t - 1, s - 2] if s >= 2 else 0
                 #  (repeated characters => need blank) or (current character is blank)
                 if (aug_label[s - 2] == aug_label[s] or aug_label[s] == self.alphabet['']):
                     alpha_matrix[t, s] = prod_of_logs(output_timeseries[t, aug_label[s]], alpha_hat)
                 # previous character is a blank between two unique characters
                 else:
-                    alpha_matrix[t, s] = prod_of_logs(output_timeseries[t, aug_label[s]], log_of_sum(alpha_hat, prev_distinct))
+                    alpha_matrix[t, s] = prod_of_logs(output_timeseries[t, aug_label[s]],
+                                                      log_of_sum(alpha_hat, prev_distinct))
                 s += 1
             # normalize the alphas for current timestep so that we don't underflow
         return np.exp(alpha_matrix[T - 1, L - 1]) + np.exp(alpha_matrix[T - 1, L - 2])
@@ -75,7 +79,8 @@ class CTCDecoder():
             output_timeseries       - T x D numpy array, where T
                                       is the length of timeseries of character distributions,
                                       and D is the size of the alphabet with the blank character
-            beam_size               - number of outputs to keep track of when expanding output_timeseries
+            beam_size               - number of outputs to keep track of when expanding
+                                      output_timeseries
         """
         # Initialization
         output_timeseries = np.log(output_timeseries)
@@ -104,26 +109,32 @@ class CTCDecoder():
                         if outputs_dict.get(output) is None:
                             outputs_dict[output] = (0, expansion_prob)
                         else:
-                            outputs_dict[output] = (outputs_dict[output][0], log_of_sum(outputs_dict[output][1], expansion_prob))
+                            outputs_dict[output] = (outputs_dict[output][0],
+                                                    log_of_sum(outputs_dict[output][1], expansion_prob))
                     # If repeat, we should keep two versions:
                     # 1. the character added to the path is collapsed
-                    # 2. the character added to the path is not collapsed (so we have repeated characters in output, like 'll' in hello)
+                    # 2. the character added to the path is not collapsed (so we have
+                    #    repeated characters in output, like 'll' in hello)
                     elif len(output) > 0 and new_char == output[-1]:
                         if outputs_dict.get(output) is None:
                             outputs_dict[output] = (prod_of_logs(char_dist[j], beam[1][0]), 0)
                         else:
-                            outputs_dict[output] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][0]), outputs_dict[output][0]), outputs_dict[output][1])
+                            outputs_dict[output] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][0]),
+                                                    outputs_dict[output][0]), outputs_dict[output][1])
                         if outputs_dict.get(next_path) is None:
                             outputs_dict[next_path] = (prod_of_logs(char_dist[j], beam[1][1]), 0)
                         else:
-                            outputs_dict[next_path] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][1]), outputs_dict[next_path][0]), outputs_dict[next_path][1])
+                            outputs_dict[next_path] = (log_of_sum(prod_of_logs(char_dist[j], beam[1][1]),
+                                                        outputs_dict[next_path][0]), outputs_dict[next_path][1])
                     # If distinct, we just add this character
                     else:
                         if outputs_dict.get(next_path) is None:
                             outputs_dict[next_path] = (expansion_prob, 0)
                         else:
-                            outputs_dict[next_path] = (log_of_sum(expansion_prob, outputs_dict[next_path][0]), outputs_dict[next_path][1])
-            curr_beams = sorted(outputs_dict.items(), key = lambda t: sum_for_max(t[1][0], t[1][1]), reverse = True)[:beam_size]
+                            outputs_dict[next_path] = (log_of_sum(expansion_prob,
+                                                       outputs_dict[next_path][0]), outputs_dict[next_path][1])
+            curr_beams = sorted(outputs_dict.items(), key = lambda t: sum_for_max(t[1][0], t[1][1]),
+                                                        reverse = True)[:beam_size]
             #endloop
         return (curr_beams[0][0], np.exp(curr_beams[0][1][0]) + np.exp(curr_beams[0][1][1]))
 
@@ -187,11 +198,14 @@ def test_eval_forward():
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
     # Not valid distributions, but easy to compute
-    output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+    output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                                    [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                                    [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
                                     [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
     # A bit more realistic
-    output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2],
-                                    [0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
+    output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1],
+                                    [0.2, 0.2, 0.2, 0.2, 0.2], [0.6, 0.1, 0.1, 0.1, 0.1],
+                                    [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
     print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "cat"), 0.0007, 1e-9))
     print(np.isclose(dec1.eval_forward_prob(output_timeseries_1, "dog"), 0.0007, 1e-9))
@@ -201,11 +215,14 @@ def test_beam_decoding():
     alphabet1 = {'c': 0, 'a' : 1, 't' : 2, 'd' : 3, 'o':  4, 'g': 5, '': 6}
     alphabet2 = {'h': 0, 'e' : 1, 'l' : 2, 'o' : 3, '' : 4}
     # Not valid distributions, but easy to compute
-    output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+    output_timeseries_1 = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                                    [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                                    [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
                                     [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
     # A bit more realistic
-    output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2],
-                                    [0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
+    output_timeseries_2 = np.array([[0.3, 0.2, 0.1, 0.3, 0.1], [0.1, 0.5, 0.1, 0.2, 0.1],
+                                    [0.2, 0.2, 0.2, 0.2, 0.2], [0.6, 0.1, 0.1, 0.1, 0.1],
+                                    [0.2, 0.2, 0.1, 0.3, 0.2], [0.1, 0.1, 0.1, 0.3, 0.1],
                                     [0.1, 0.1, 0.1, 0.3, 0.1]])
     dec1 = CTCDecoder(alphabet1)
     dec2 = CTCDecoder(alphabet2)
